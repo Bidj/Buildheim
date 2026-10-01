@@ -9,7 +9,7 @@ namespace PlanBuild.Client
 {
     internal sealed class ClientPlanner : IDisposable
     {
-        private readonly HammerAssistance assistance = new HammerAssistance();
+        private readonly HammerAssistance assistance;
         private readonly ProjectionControls controls;
         private readonly ChestObservation chests;
         private readonly PlannerWindow view;
@@ -34,6 +34,7 @@ namespace PlanBuild.Client
         public ClientPlanner(ClientConfig config)
         {
             Config = config;
+            assistance = new HammerAssistance(config);
             Selection = new CaptureSelection(() => !Visible && Player.m_localPlayer &&
                 !Player.m_localPlayer.IsDead() && Player.m_localPlayer.TakeInput() && !Hud.IsPieceSelectionVisible());
             controls = new ProjectionControls(() => !Visible && Player.m_localPlayer &&

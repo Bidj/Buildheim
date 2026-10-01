@@ -14,6 +14,11 @@ namespace PlanBuild.Client
         private static HammerTarget ghostTarget;
         private readonly Harmony harmony = new Harmony(PlanBuildPlugin.PluginGUID + ".hammer");
         private readonly AutoBuilder autoBuilder = new AutoBuilder();
+        private readonly ClientConfig config;
+        // Opt-in compatibility mode: skip Buildheim's own inventory-only material checks and let
+        // another mod's normal hammer-placement hooks (for example a chest-resource mod) decide
+        // whether materials are available and consume them. See ClientConfig.DelegateMaterialChecks.
+        private bool DelegateMaterialChecks => config != null && config.DelegateMaterialChecks.Value;
         private BuildMode mode;
         private BlueprintProjection projection;
         private BlueprintSelection selection;
@@ -27,8 +32,9 @@ namespace PlanBuild.Client
         public string Status { get; private set; } = "Equip a hammer and aim at a missing piece.";
         public bool Ready { get; private set; }
 
-        public HammerAssistance()
+        public HammerAssistance(ClientConfig config = null)
         {
+            this.config = config;
             instance = this;
             try
             {
@@ -106,7 +112,7 @@ namespace PlanBuild.Client
             }
             if (instance.mode == BuildMode.Automatic)
             {
-                var next = instance.autoBuilder.Find(instance.projection, __instance);
+                var next = instance.autoBuilder.Find(instance.projection, __instance, instance.DelegateMaterialChecks);
                 instance.selection = next == null ? null : new BlueprintSelection.Hammer(next);
             }
             else instance.selection = HammerTarget.Find(instance.projection, __instance);
@@ -132,7 +138,7 @@ namespace PlanBuild.Client
                 SelectRepair(__instance);
                 return true;
             }
-            if (!selected.HasInventoryResources())
+            if (!ResourceAvailability.Permits(instance.DelegateMaterialChecks, selected.HasInventoryResources()))
             {
                 instance.Status = Localization.instance.Localize(selected.Piece.m_name) + ": missing materials in your inventory.";
                 SelectRepair(__instance);
@@ -242,7 +248,7 @@ namespace PlanBuild.Client
                 error = recipeError;
             else if (ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()))
                 error = "Hammer assistance requires resource costs. Disable the world's free-build setting first.";
-            else if (selected.MissingMaterialsError() is string missingMaterials)
+            else if (!instance.DelegateMaterialChecks && selected.MissingMaterialsError() is string missingMaterials)
                 error = missingMaterials;
             else if (!selected.RequirementsMet)
                 error = "Check the required crafting station and recipe requirements.";
@@ -292,7 +298,7 @@ namespace PlanBuild.Client
                 instance.Status = name + ": " + PlacementFeedback.Describe(__instance.m_placementStatus);
             else if (ZoneSystem.instance.GetGlobalKey(ghostTarget.Piece.FreeBuildKey()))
                 instance.Status = name + ": disable the world's free-build setting to use hammer assistance.";
-            else if (!ghostTarget.HasInventoryResources())
+            else if (!ResourceAvailability.Permits(instance.DelegateMaterialChecks, ghostTarget.HasInventoryResources()))
                 instance.Status = name + ": missing materials in your inventory.";
             else if (!ghostTarget.RequirementsMet)
                 instance.Status = name + ": check the required crafting station and recipe requirements.";
