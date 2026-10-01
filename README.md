@@ -6,7 +6,7 @@
 
 A client-only blueprint mod for Valheim, inspired by Litematica. Load or capture a building, position a private hologram, and build it with your normal hammer.
 
-**Only you need the mod.** The server and other players do not need Buildheim. Your blueprint stays local; the pieces you build become ordinary world objects. Building uses materials from your inventory.
+**Only you need the mod.** The server and other players do not need Buildheim. Your blueprint stays local; the pieces you build become ordinary world objects. Building uses materials from your inventory, unless you opt in to the [chest-resource mod compatibility setting](#compatibility-with-chest-resource-mods).
 
 ## Installation
 
@@ -117,7 +117,19 @@ Open chests normally while a blueprint is loaded to record their contents. Openi
 
 Check off individual materials, use **Check stocked** to mark rows with nothing left to gather, or **Check all** to mark the current list. **Reset checks** clears your marks.
 
-**Checkmarks are gathering notes.** They do not change quantities or authorize building. Chest contents are never withdrawn automatically: the materials must be in your own inventory when you build. Costs exclude unavailable pieces, which the planner reports. Completion counts reflect construction detected in the loaded world.
+**Checkmarks are gathering notes.** They do not change quantities or authorize building. Chest contents are never withdrawn automatically: the materials must be in your own inventory when you build, unless you enable the [chest-resource mod compatibility setting](#compatibility-with-chest-resource-mods). Costs exclude unavailable pieces, which the planner reports. Completion counts reflect construction detected in the loaded world.
+
+## Compatibility with chest-resource mods
+
+By default, hammer assistance (click-to-build and autobuild) only builds a piece when its materials are in your own inventory, matching the message above. Some other mods (for example Valheim+) extend Valheim's normal hammer placement so it can also draw materials from nearby chests.
+
+Enable **Delegate material checks to another mod** (BepInEx config, `Compatibility` section, off by default) to let that happen:
+
+- Buildheim stops requiring materials in your bags before a click-to-build attempt or an autobuild placement.
+- Every other assistance check still applies: the recipe must be known and available, the crafting station and other requirements must be met, the placement must be valid, and the world's free-build setting must be off.
+- Valheim's own `Player.TryPlacePiece` still runs unchanged. Buildheim never scans or withdraws from chests itself; it simply stops blocking the attempt early, so that path (and any compatible mod's hooks on it) decides whether materials are available and consumes them.
+
+This only helps if the other mod actually hooks normal hammer placement's material consumption. A mod that only changes what the UI displays as "available" will not supply materials here. If materials are not actually available when placement runs, Valheim's own placement will fail as it normally would.
 
 ## Pick up where you left off
 
@@ -140,7 +152,7 @@ These paths are relative to your r2modman profile:
 | --- | --- |
 | `BepInEx/config/Buildheim/blueprints` | Imported and captured blueprints |
 | `BepInEx/config/Buildheim/placements` | Saved holograms and gathering notes |
-| `BepInEx/config/augusdogus.Buildheim.cfg` | Planner, autobuild, placement and HUD keys; HUD visibility; blueprint directory |
+| `BepInEx/config/augusdogus.Buildheim.cfg` | Planner, autobuild, placement and HUD keys; HUD visibility; blueprint directory; chest-resource mod compatibility |
 | `BepInEx/LogOutput.log` | Mod loading messages and errors |
 
 The configuration file is created on first launch. The positioning modifier combinations are currently fixed.
@@ -155,6 +167,7 @@ Buildheim reads `.blueprint` and `.vbuild` files, up to **10,000 pieces** and **
 - Pieces with nonstandard scales can be displayed but cannot be placed by hammer assistance.
 - Modded pieces require their original piece mods, including on the server when those mods require it.
 - Assisted building requires resource costs. Disable the world's free-build setting to use it.
+- Materials normally come from your own inventory; see [chest-resource mod compatibility](#compatibility-with-chest-resource-mods) to opt into another mod's chest support instead.
 
 When switching from the original PlanBuild, finish or remove its shared plans with the original mod first and back up affected worlds and characters. This version does not migrate its plan objects, runes, Plan Hammer, or totems. Existing local blueprint files can still be imported.
 
@@ -176,7 +189,7 @@ The mod DLL is `src/Buildheim/bin/Release/net48/Buildheim.dll`. Install only the
 
 The client implementation lives in [`src/Buildheim/Client`](src/Buildheim/Client).
 
-Tests cover blueprint parsing, material accounting, layer selection, autobuild scheduling, placement saves, and the game methods used by the hammer and input hooks. They do not run Unity. Runtime validation should include UI layout, modifier shortcuts, obstructed placement, inventory and chest transfers, reconnecting, and a vanilla server with an unmodded observer.
+Tests cover blueprint parsing, material accounting, layer selection, autobuild scheduling, placement saves, resource-delegation gating, and the game methods used by the hammer and input hooks. They do not run Unity. Runtime validation should include UI layout, modifier shortcuts, obstructed placement, inventory and chest transfers, reconnecting, and a vanilla server with an unmodded observer.
 
 For bug reports, include the mod and Valheim versions, steps to reproduce, and relevant log entries. Include the blueprint file when the issue depends on a particular building.
 

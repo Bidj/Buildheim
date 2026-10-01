@@ -6,14 +6,15 @@ namespace PlanBuild.Client
     {
         private readonly AutoBuildQueue queue = new AutoBuildQueue();
 
-        public HammerTarget Find(BlueprintProjection projection, Player player)
+        public HammerTarget Find(BlueprintProjection projection, Player player, bool delegateMaterialChecks = false)
         {
             HammerTarget selected = null;
             queue.Next(projection.Pieces.Count, Time.time, index =>
             {
                 var candidate = HammerTarget.FromPiece(projection, projection.Pieces[index], player);
                 if (candidate == null || !candidate.RecipeKnown ||
-                    !player.IsPieceAvailable(candidate.Piece) || !candidate.HasInventoryResources() ||
+                    !player.IsPieceAvailable(candidate.Piece) ||
+                    !ResourceAvailability.Permits(delegateMaterialChecks, candidate.HasInventoryResources()) ||
                     ZoneSystem.instance.GetGlobalKey(candidate.Piece.FreeBuildKey()) ||
                     !candidate.RequirementsMet) return false;
                 selected = candidate;
